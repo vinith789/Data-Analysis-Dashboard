@@ -2,9 +2,9 @@
   "name": "data",
   "version": "1.0.0",
   "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node server.js"
+ "scripts": {
+    "start": "node server.js",
+    "build": "echo 'No build step needed'"
   },
   "keywords": [],
   "author": "",
