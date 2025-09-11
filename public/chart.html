@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Excel Chart</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="p-5">
+  <h2 class="mb-4">Generate Multiple Charts</h2>
+
+  <!-- Chart Sets -->
+  <div id="chartSetsContainer">
+    <div class="row chart-set mb-3">
+      <div class="col-md-3">
+        <label>X-axis</label>
+        <select class="form-select xColumn"></select>
+      </div>
+      <div class="col-md-3">
+        <label>Y-axis</label>
+        <select class="form-select yColumn"></select>
+      </div>
+      <div class="col-md-3">
+        <label>Chart Type</label>
+        <select class="form-select chartType">
+          <option value="bar">Bar</option>
+          <option value="line">Line</option>
+          <option value="pie">Pie</option>
+        </select>
+      </div>
+      <div class="col-md-3 d-flex align-items-end">
+        <button class="btn btn-danger removeSet">Remove</button>
+      </div>
+    </div>
+  </div>
+
+  <button id="addSetBtn" class="btn btn-primary mb-3">Add Another Chart Set</button>
+  <button id="generateAllCharts" class="btn btn-success mb-3">Generate All Charts</button>
+
+  <div id="chartsContainer" class="mt-4"></div>
+
+  <script>
+    // Load Excel data from localStorage
+    const rawData = JSON.parse(localStorage.getItem("excelData") || "{}");
+    if (!rawData.data) {
+      alert("No Excel data found. Please upload first.");
+      window.location.href = "/index.html";
+    }
+
+    const chartsContainer = document.getElementById("chartsContainer");
+    const chartSetsContainer = document.getElementById("chartSetsContainer");
+    const addSetBtn = document.getElementById("addSetBtn");
+
+    // Populate dropdowns
+    function populateSelects(select) {
+      select.innerHTML = "";
+      rawData.columns.forEach(col => {
+        const option = document.createElement("option");
+        option.value = col;
+        option.textContent = col;
+        select.appendChild(option);
+      });
+    }
+
+    // Initialize first set
+    document.querySelectorAll(".chart-set").forEach(set => {
+      populateSelects(set.querySelector(".xColumn"));
+      populateSelects(set.querySelector(".yColumn"));
+      set.querySelector(".removeSet").addEventListener("click", () => set.remove());
+    });
+
+    // Add new chart set
+    addSetBtn.addEventListener("click", () => {
+      const template = document.querySelector(".chart-set");
+      const newSet = template.cloneNode(true);
+      chartSetsContainer.appendChild(newSet);
+
+      populateSelects(newSet.querySelector(".xColumn"));
+      populateSelects(newSet.querySelector(".yColumn"));
+      newSet.querySelector(".removeSet").addEventListener("click", () => newSet.remove());
+    });
+
+    // Generate all charts
+    document.getElementById("generateAllCharts").addEventListener("click", () => {
+      chartsContainer.innerHTML = "";
+      if (window.multiCharts) window.multiCharts.forEach(c => c.destroy());
+      window.multiCharts = [];
+
+      const sets = document.querySelectorAll(".chart-set");
+      sets.forEach(set => {
+        const xCol = set.querySelector(".xColumn").value;
+        const yCol = set.querySelector(".yColumn").value;
+        const chartType = set.querySelector(".chartType").value;
+
+        const canvas = document.createElement("canvas");
+        chartsContainer.appendChild(canvas);
+        const ctx = canvas.getContext("2d");
+
+        // Aggregate data by X-axis to remove duplicates
+        const aggregated = {};
+        rawData.data.forEach(row => {
+          const key = row[xCol];
+          const value = parseFloat(row[yCol]) || 0;
+          aggregated[key] = (aggregated[key] || 0) + value;
+        });
+
+        const labels = Object.keys(aggregated);
+        const values = Object.values(aggregated);
+
+        // Determine colors
+        let backgroundColors;
+        if (chartType === "pie") {
+          const colors = [
+            "#FF6384", "#36A2EB", "#FFCE56", "#4BC0C0",
+            "#9966FF", "#FF9F40", "#E7E9ED", "#8BC34A"
+          ];
+          backgroundColors = labels.map((_, i) => colors[i % colors.length]);
+        } else {
+          backgroundColors = 'rgba(75, 192, 192, 0.6)';
+        }
+
+        // Create chart
+        const chart = new Chart(ctx, {
+          type: chartType,
+          data: {
+            labels,
+            datasets: [{
+              label: yCol,
+              data: values,
+              backgroundColor: backgroundColors,
+              borderColor: chartType === "pie" ? backgroundColors : 'rgba(75, 192, 192, 1)',
+              borderWidth: 1
+            }]
+          },
+          options: {
+            responsive: true,
+            scales: chartType !== "pie" ? { y: { beginAtZero: true } } : {}
+          }
+        });
+
+        window.multiCharts.push(chart);
+      });
+    });
+  </script>
+</body>
+</html>
